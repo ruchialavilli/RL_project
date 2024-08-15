@@ -1,0 +1,6 @@
+wandb/*
+videos/*
+runs/*
+old/*
+*.zip
+.DS_Store
