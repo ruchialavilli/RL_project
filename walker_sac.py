@@ -15,11 +15,15 @@ from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckA
 def make_env():
     env = gym.make("BipedalWalker-v3", render_mode="rgb_array")
     env = gym.wrappers.RecordEpisodeStatistics(env)  # record stats such as returns
+
     return env
 
 run = wandb.init(
     project="bipedal_walker_sac",
-    config = {"learning_rate": 0.0003},
+    config = {
+        "policy": "SAC_MlpPolicy",
+        "noise_sigma": 0.1,
+    },
     monitor_gym=True,
     sync_tensorboard=True,
     save_code=True
