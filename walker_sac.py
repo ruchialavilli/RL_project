@@ -12,10 +12,16 @@ from stable_baselines3 import SAC
 from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
 from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise
 
+
+# Setting the seed for reproducibility
+seed = 42
+np.random.seed(seed)
+
 def make_env():
     env = gym.make("BipedalWalker-v3", render_mode="rgb_array")
     env = gym.wrappers.RecordEpisodeStatistics(env)  # record stats such as returns
-
+    env.reset(seed=seed) 
+    env.action_space.seed(seed)
     return env
 
 run = wandb.init(
