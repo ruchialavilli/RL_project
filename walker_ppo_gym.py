@@ -7,6 +7,7 @@ import numpy as np
 import wandb
 import logging
 from wandb.integration.sb3 import WandbCallback
+from stable_baselines3.common.logger import configure
 # import pdb
 
 from stable_baselines3 import PPO
@@ -35,10 +36,13 @@ run = wandb.init(
 env = DummyVecEnv([make_env])
 env = VecVideoRecorder(env, f"videos/{run.id}", record_video_trigger = lambda x: x % 2000 == 0, video_length=200)
 
-
+#tmp_path = "/tmp/sb3_log/"
+#new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])
 model = PPO("MlpPolicy", env, learning_rate= 0.000827, gamma = 0.96979, gae_lambda= 0.92680, ent_coef= 0.0000199, verbose=1, tensorboard_log=f"runs/ppo_gym")
+#model.set_logger(new_logger)
 model.learn(total_timesteps=1000000,
-            callback=WandbCallback(gradient_save_freq=200, model_save_path=f"models/{run.id}", verbose=2)
+            callback=WandbCallback(gradient_save_freq=200, model_save_path=f"models/{run.id}", verbose=2),
+            eval
 )
 
 
