@@ -41,10 +41,8 @@ env = VecVideoRecorder(env, f"videos/{run.id}", record_video_trigger = lambda x:
 model = PPO("MlpPolicy", env, learning_rate= 0.000827, gamma = 0.96979, gae_lambda= 0.92680, ent_coef= 0.0000199, verbose=1, tensorboard_log=f"runs/ppo_gym")
 #model.set_logger(new_logger)
 model.learn(total_timesteps=1000000,
-            callback=WandbCallback(gradient_save_freq=200, model_save_path=f"models/{run.id}", verbose=2),
-            eval
+            callback=WandbCallback(gradient_save_freq=200, model_save_path=f"models/{run.id}", verbose=2)
 )
-
 
 model.save("walk_ppo_gym")
 vec_env = model.get_env()
