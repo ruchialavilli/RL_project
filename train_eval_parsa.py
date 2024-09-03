@@ -1,6 +1,9 @@
+import sys
+sys.path.insert(0, '/opt/anaconda3/envs/latest')
 import gymnasium as gym
 from stable_baselines3 import SAC
 from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
 from stable_baselines3.common.noise import NormalActionNoise
 
@@ -39,7 +42,8 @@ model = SAC("MlpPolicy", env, action_noise=action_noise, verbose=0, tensorboard_
 
 # Train the agent
 model.learn(total_timesteps=int(10000), log_interval=4,
-            callback=WandbCallback(gradient_save_freq=200, model_save_path=f"models/{run.id}", verbose=0)
+            #callback=WandbCallback(gradient_save_freq=200, model_save_path=f"models/{run.id}", verbose=0),
+            callback=EvalCallback(env, best_model_save_path=f"models/best/{run.id}", log_path="./evalLogs/", eval_freq=1000)
 )
 
 # Save the agent
