@@ -6,10 +6,12 @@ import gymnasium as gym
 import numpy as np
 import wandb
 import logging
-from wandb.integration.sb3 import WandbCallback
+from sb3_contrib import RecurrentPPO
+from stable_baselines3.common.callbacks import EvalCallback
+from stable_baselines3.common.evaluation import evaluate_policy
+# from wandb.integration.sb3 import WandbCallback
 from stable_baselines3.common.logger import configure
 # import pdb
-
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
 
@@ -26,7 +28,7 @@ def make_env():
 
 run = wandb.init(
     project="bipedal_walker_ppo_gym",
-    config = {"policy": "PPO_MlpPolicy", "learning_rate": 0.000827, "gamma":0.96979, "gae_lambda":0.92680, "ent_coef":.0000199},
+    config = {"policy": "PPO_MlpLstmPolicy", "learning_rate": 0.000827, "gamma":0.96979, "gae_lambda":0.92680, "ent_coef":.0000199},
     monitor_gym=True,
     sync_tensorboard=True,
     save_code=True
@@ -36,34 +38,51 @@ run = wandb.init(
 env = DummyVecEnv([make_env])
 env = VecVideoRecorder(env, f"videos/{run.id}", record_video_trigger = lambda x: x % 2000 == 0, video_length=200)
 
+# Instantiate the agent without noise
 #tmp_path = "/tmp/sb3_log/"
 #new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])
-model = PPO("MlpPolicy", env, learning_rate= 0.000827, gamma = 0.96979, gae_lambda= 0.92680, ent_coef= 0.0000199, verbose=1, tensorboard_log=f"runs/ppo_gym")
+model = RecurrentPPO("MlpLstmPolicy", env, learning_rate= 0.000827, gamma = 0.98, gae_lambda= 0.92680, ent_coef= 0.0000199, verbose=1, tensorboard_log=f"runs/ppo_gym")
 #model.set_logger(new_logger)
-model.learn(total_timesteps=1000000,
-            callback=WandbCallback(gradient_save_freq=200, model_save_path=f"models/{run.id}", verbose=2)
+
+# Train the agent
+model.learn(total_timesteps= 300000,
+            #callback=WandbCallback(gradient_save_freq=200, model_save_path=f"models/{run.id}", verbose=2
+            callback=EvalCallback(env, best_model_save_path=f"models/best/{run.id}", log_path="./evalLogs/", eval_freq=1000)
 )
 
+# Save the agent
 model.save("walk_ppo_gym")
 vec_env = model.get_env()
 
 del model # remove to demonstrate saving and loading
 
-model = PPO.load("walk_ppo_gym")
+# Load the agent
+model = RecurrentPPO.load("walk_ppo_gym")
 
+# Evaluate the agent
+mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10)
+wandb.log({"mean_reward": mean_reward, "std_reward": std_reward})
+
+print(f"Mean reward: {mean_reward} +/- {std_reward}")
 obs = vec_env.reset()
 
+# cell and hidden state of the LSTM
+lstm_states = None
+num_envs = 1
+
+# Episode start signals are used to reset the lstm states
+episode_starts = np.ones((num_envs,), dtype=bool)
 reward_total = 0
-for _ in range(10000):
-    action, _states = model.predict(obs)
-    obs, rewards, done, info = vec_env.step(action)
+for _ in range(1000): 
+    action, lstm_states = model.predict(obs, state=lstm_states, episode_start=episode_starts, deterministic=True)
+    obs, rewards, dones, info = vec_env.step(action)
+    episode_starts = dones
     reward_total += rewards
     wandb.log({"returns" : reward_total, "reward": rewards})
-    #print(rewards)
-    if done:
+    # print(rewards)
+    if dones:
         reward_total = 0
         obs = vec_env.reset()
 
 print(reward_total)
-
-# env.close()
+env.close()
